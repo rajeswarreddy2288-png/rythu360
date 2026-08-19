@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Rythu360",
+    "slug": "rythu360",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F8FAF7"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#16803C"
+      },
+      "package": "com.rythu360.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
