@@ -1,6 +1,16 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
+import { supabase } from "../supabase";
 
 // TODO: Replace this with a real ML/backend call once your price-prediction
 // API is ready. For now this is a simple placeholder so the UI is testable.
@@ -39,6 +49,72 @@ export default function CropPlanScreen() {
   const [budget, setBudget] = useState("");
   const [crop, setCrop] = useState("");
   const [result, setResult] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [pastPlans, setPastPlans] = useState([]);
+  const [loadingPast, setLoadingPast] = useState(true);
+
+  const loadPastPlans = useCallback(async () => {
+    setLoadingPast(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoadingPast(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("crop_plans")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!error) setPastPlans(data);
+    setLoadingPast(false);
+  }, []);
+
+  useEffect(() => {
+    loadPastPlans();
+  }, [loadPastPlans]);
+
+  const handleGetReport = async () => {
+    const report = estimateRisk({ acres, budget, crop });
+    setResult(report);
+    setSaving(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setSaving(false);
+      Alert.alert("Not logged in", "Please log in again.");
+      return;
+    }
+
+    const { error } = await supabase.from("crop_plans").insert([
+      {
+        user_id: user.id,
+        crop: report.crop,
+        location,
+        acres: parseFloat(acres) || null,
+        budget: parseFloat(budget) || null,
+        est_investment: report.estInvestment,
+        est_profit_low: report.profitLow,
+        est_profit_high: report.profitHigh,
+        break_even_price: parseFloat(report.breakEvenPrice),
+      },
+    ]);
+
+    setSaving(false);
+
+    if (error) {
+      Alert.alert("Could not save report", error.message);
+    } else {
+      loadPastPlans(); // refresh history list
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
@@ -57,8 +133,8 @@ export default function CropPlanScreen() {
       <Text style={styles.label}>Crop</Text>
       <TextInput style={styles.input} value={crop} onChangeText={setCrop} placeholder="e.g. Pomegranate" />
 
-      <TouchableOpacity style={styles.button} onPress={() => setResult(estimateRisk({ acres, budget, crop }))}>
-        <Text style={styles.buttonText}>📊 Get Risk Report</Text>
+      <TouchableOpacity style={styles.button} onPress={handleGetReport} disabled={saving}>
+        <Text style={styles.buttonText}>{saving ? "Saving..." : "📊 Get Risk Report"}</Text>
       </TouchableOpacity>
 
       {result && (
@@ -78,6 +154,26 @@ export default function CropPlanScreen() {
             accurate numbers.
           </Text>
         </View>
+      )}
+
+      <Text style={styles.historyTitle}>📜 Past Reports</Text>
+      {loadingPast ? (
+        <ActivityIndicator color={COLORS.primaryDeepGreen} style={{ marginTop: 10 }} />
+      ) : pastPlans.length === 0 ? (
+        <Text style={styles.empty}>No past reports yet.</Text>
+      ) : (
+        pastPlans.map((p) => (
+          <View key={p.id} style={styles.historyCard}>
+            <Text style={styles.historyCrop}>
+              {p.crop} {p.location ? `— ${p.location}` : ""}
+            </Text>
+            <Text style={styles.historyLine}>
+              Profit est.: ₹{Number(p.est_profit_low).toLocaleString("en-IN")} – ₹
+              {Number(p.est_profit_high).toLocaleString("en-IN")}
+            </Text>
+            <Text style={styles.historyDate}>{new Date(p.created_at).toLocaleDateString("en-IN")}</Text>
+          </View>
+        ))
       )}
     </ScrollView>
   );
@@ -114,4 +210,23 @@ const styles = StyleSheet.create({
   resultTitle: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.body, marginBottom: 8 },
   resultLine: { color: COLORS.darkGreenText, fontSize: FONT_SIZES.small, marginBottom: 4 },
   disclaimer: { color: COLORS.gray, fontSize: 11, marginTop: 10, fontStyle: "italic" },
+  historyTitle: {
+    fontSize: FONT_SIZES.body,
+    fontWeight: "700",
+    color: COLORS.primaryDeepGreen,
+    marginTop: 30,
+    marginBottom: 10,
+  },
+  empty: { color: COLORS.gray, fontSize: FONT_SIZES.small },
+  historyCard: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  historyCrop: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.small },
+  historyLine: { color: COLORS.darkGreenText, fontSize: FONT_SIZES.small, marginTop: 4 },
+  historyDate: { color: COLORS.gray, fontSize: 11, marginTop: 4 },
 });
