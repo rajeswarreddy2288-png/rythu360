@@ -21,9 +21,20 @@ export default function FarmDiaryScreen() {
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("farm_diary")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -42,9 +53,19 @@ export default function FarmDiaryScreen() {
     if (!crop) return;
     setSaving(true);
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setSaving(false);
+      Alert.alert("Not logged in", "Please log in again.");
+      return;
+    }
+
     const { error } = await supabase
       .from("farm_diary")
-      .insert([{ crop, expenses: parseFloat(expenses) || 0 }]);
+      .insert([{ crop, expenses: parseFloat(expenses) || 0, user_id: user.id }]);
 
     setSaving(false);
 
