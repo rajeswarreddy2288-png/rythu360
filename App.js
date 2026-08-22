@@ -9,6 +9,7 @@ import CropPlanScreen from "./screens/CropPlanScreen";
 import DiseaseCheckScreen from "./screens/DiseaseCheckScreen";
 import ProfitCalculatorScreen from "./screens/ProfitCalculatorScreen";
 import FarmDiaryScreen from "./screens/FarmDiaryScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 import LoginScreen from "./screens/LoginScreen";
 import { COLORS } from "./constants/colors";
 import { supabase } from "./supabase";
@@ -21,6 +22,7 @@ const TAB_ICONS = {
   "Disease Check": "📸",
   Profit: "💰",
   Diary: "📔",
+  Profile: "👤",
 };
 
 function LogoutButton() {
@@ -84,6 +86,7 @@ export default function App() {
         <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
         <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
         <Tab.Screen name="Diary" component={FarmDiaryScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );
