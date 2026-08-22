@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 
 import HomeScreen from "./screens/HomeScreen";
+import MyFarmsScreen from "./screens/MyFarmsScreen";
+import FarmCropsScreen from "./screens/FarmCropsScreen";
 import CropPlanScreen from "./screens/CropPlanScreen";
 import DiseaseCheckScreen from "./screens/DiseaseCheckScreen";
 import ProfitCalculatorScreen from "./screens/ProfitCalculatorScreen";
@@ -15,9 +18,11 @@ import { COLORS } from "./constants/colors";
 import { supabase } from "./supabase";
 
 const Tab = createBottomTabNavigator();
+const FarmStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: "🌾",
+  "My Farms": "🚜",
   "Crop Plan": "🌱",
   "Disease Check": "📸",
   Profit: "💰",
@@ -27,12 +32,26 @@ const TAB_ICONS = {
 
 function LogoutButton() {
   return (
-    <TouchableOpacity
-      onPress={() => supabase.auth.signOut()}
-      style={{ marginRight: 16 }}
-    >
+    <TouchableOpacity onPress={() => supabase.auth.signOut()} style={{ marginRight: 16 }}>
       <Text style={{ color: COLORS.white, fontWeight: "600" }}>Log Out</Text>
     </TouchableOpacity>
+  );
+}
+
+// A small stack so tapping a farm can push into its crop list,
+// while still living inside the "My Farms" tab.
+function MyFarmsStack() {
+  return (
+    <FarmStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: { fontWeight: "700" },
+      }}
+    >
+      <FarmStack.Screen name="Farms List" component={MyFarmsScreen} options={{ title: "My Farms" }} />
+      <FarmStack.Screen name="Farm Crops" component={FarmCropsScreen} options={{ title: "Crops" }} />
+    </FarmStack.Navigator>
   );
 }
 
@@ -82,6 +101,7 @@ export default function App() {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+        <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
         <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
         <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
         <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
