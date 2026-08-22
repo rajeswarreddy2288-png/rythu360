@@ -116,6 +116,15 @@ export default function CropPlanScreen() {
     }
   };
 
+  const deletePlan = async (id) => {
+    const { error } = await supabase.from("crop_plans").delete().eq("id", id);
+    if (error) {
+      Alert.alert("Could not delete", error.message);
+    } else {
+      setPastPlans((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
       <Text style={styles.title}>🌱 Should I Plant?</Text>
@@ -164,14 +173,21 @@ export default function CropPlanScreen() {
       ) : (
         pastPlans.map((p) => (
           <View key={p.id} style={styles.historyCard}>
-            <Text style={styles.historyCrop}>
-              {p.crop} {p.location ? `— ${p.location}` : ""}
-            </Text>
-            <Text style={styles.historyLine}>
-              Profit est.: ₹{Number(p.est_profit_low).toLocaleString("en-IN")} – ₹
-              {Number(p.est_profit_high).toLocaleString("en-IN")}
-            </Text>
-            <Text style={styles.historyDate}>{new Date(p.created_at).toLocaleDateString("en-IN")}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.historyCrop}>
+                  {p.crop} {p.location ? `— ${p.location}` : ""}
+                </Text>
+                <Text style={styles.historyLine}>
+                  Profit est.: ₹{Number(p.est_profit_low).toLocaleString("en-IN")} – ₹
+                  {Number(p.est_profit_high).toLocaleString("en-IN")}
+                </Text>
+                <Text style={styles.historyDate}>{new Date(p.created_at).toLocaleDateString("en-IN")}</Text>
+              </View>
+              <TouchableOpacity onPress={() => deletePlan(p.id)} style={styles.deleteButton}>
+                <Text style={styles.deleteButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))
       )}
@@ -229,4 +245,10 @@ const styles = StyleSheet.create({
   historyCrop: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.small },
   historyLine: { color: COLORS.darkGreenText, fontSize: FONT_SIZES.small, marginTop: 4 },
   historyDate: { color: COLORS.gray, fontSize: 11, marginTop: 4 },
+  deleteButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 10,
+  },
+  deleteButtonText: { color: COLORS.gray, fontSize: 16, fontWeight: "700" },
 });
