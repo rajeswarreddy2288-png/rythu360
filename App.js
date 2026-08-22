@@ -6,9 +6,11 @@ import { StatusBar } from "expo-status-bar";
 import { Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 
 import HomeScreen from "./screens/HomeScreen";
+import WeatherScreen from "./screens/WeatherScreen";
 import MyFarmsScreen from "./screens/MyFarmsScreen";
 import FarmCropsScreen from "./screens/FarmCropsScreen";
 import CropPlanScreen from "./screens/CropPlanScreen";
+import MandiPricesScreen from "./screens/MandiPricesScreen";
 import DiseaseCheckScreen from "./screens/DiseaseCheckScreen";
 import ProfitCalculatorScreen from "./screens/ProfitCalculatorScreen";
 import FarmDiaryScreen from "./screens/FarmDiaryScreen";
@@ -22,8 +24,10 @@ const FarmStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: "🌾",
+  Weather: "⛅",
   "My Farms": "🚜",
   "Crop Plan": "🌱",
+  "Mandi Prices": "📈",
   "Disease Check": "📸",
   Profit: "💰",
   Diary: "📔",
@@ -101,8 +105,10 @@ export default function App() {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+        <Tab.Screen name="Weather" component={WeatherScreen} />
         <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
         <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
+        <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
         <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
         <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
         <Tab.Screen name="Diary" component={FarmDiaryScreen} />
