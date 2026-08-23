@@ -9,10 +9,18 @@ import {
   Alert,
 } from "react-native";
 import * as Location from "expo-location";
+import * as Speech from "expo-speech";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 
 // Get a free key at https://openweathermap.org/api
 const OPENWEATHER_API_KEY = "a6d9ce2a04a26b411146edc48225fe08";
+
+function getCropWarningTelugu(temp, humidity, windSpeed) {
+  if (temp > 40) return "అధిక వేడిమి. పంటలను వేడి నుండి కాపాడండి, ఉదయాన్నే నీరు పెట్టండి.";
+  if (humidity > 85) return "అధిక తేమ. శిలీంధ్ర వ్యాధుల ప్రమాదం ఉంది, జాగ్రత్తగా గమనించండి.";
+  if (windSpeed > 10) return "బలమైన గాలులు. లేత మొక్కలను భద్రపరచండి.";
+  return "నేటి వాతావరణం చాలా పంటలకు సాధారణంగా ఉంది.";
+}
 
 export default function WeatherScreen() {
   const [loading, setLoading] = useState(true);
@@ -20,6 +28,32 @@ export default function WeatherScreen() {
   const [current, setCurrent] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [placeName, setPlaceName] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+
+  const speakInTelugu = () => {
+    if (!current) return;
+
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+
+    const temp = Math.round(current.main.temp);
+    const humidity = current.main.humidity;
+    const wind = current.wind.speed;
+    const warning = getCropWarningTelugu(current.main.temp, current.main.humidity, current.wind.speed);
+
+    const text = `ప్రస్తుత ఉష్ణోగ్రత ${temp} డిగ్రీలు. తేమ ${humidity} శాతం. గాలి వేగం సెకనుకు ${wind} మీటర్లు. ${warning}`;
+
+    setSpeaking(true);
+    Speech.speak(text, {
+      language: "te-IN",
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  };
 
   const loadWeather = useCallback(async () => {
     setLoading(true);
@@ -126,6 +160,10 @@ export default function WeatherScreen() {
               {getCropWarning(current.main.temp, current.main.humidity, current.wind.speed)}
             </Text>
           </View>
+
+          <TouchableOpacity style={styles.listenButton} onPress={speakInTelugu}>
+            <Text style={styles.listenButtonText}>{speaking ? "⏹️ Stop" : "🔊 తెలుగులో వినండి (Listen in Telugu)"}</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -180,6 +218,16 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   warningText: { fontSize: FONT_SIZES.small, color: COLORS.darkGreenText, textAlign: "center" },
+  listenButton: {
+    backgroundColor: COLORS.harvestGold,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 14,
+    width: "100%",
+    alignItems: "center",
+  },
+  listenButtonText: { color: COLORS.darkGreenText, fontWeight: "700", fontSize: FONT_SIZES.small },
   forecastTitle: {
     fontSize: FONT_SIZES.body,
     fontWeight: "700",

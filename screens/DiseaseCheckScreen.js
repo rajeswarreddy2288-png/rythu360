@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, TextInput } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Speech from "expo-speech";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
 
@@ -58,6 +59,21 @@ function findCommonDiseases(cropInput) {
   return COMMON_DISEASES[key] || null;
 }
 
+// Free translation API, no signup needed. Good enough for short agricultural
+// phrases; for very long text it may truncate, so we keep translations short.
+async function translateToTelugu(text) {
+  if (!text) return null;
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 490))}&langpair=en|te`
+    );
+    const data = await res.json();
+    return data?.responseData?.translatedText || text;
+  } catch (err) {
+    return text; // fall back to English if translation fails
+  }
+}
+
 export default function DiseaseCheckScreen() {
   const [image, setImage] = useState(null); // preview URI
   const [imageBase64, setImageBase64] = useState(null); // actual data sent to the API
@@ -65,8 +81,44 @@ export default function DiseaseCheckScreen() {
   const [manualCropFallback, setManualCropFallback] = useState("");
   const [fallbackDiseases, setFallbackDiseases] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [speaking, setSpeaking] = useState(false);
+
+  const speakResult = () => {
+    if (!result) return;
+
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+
+    let text;
+    if (result.cropUnclear) {
+      text = "పంటను గుర్తించలేకపోయాము. దయచేసి స్పష్టమైన ఫోటో మళ్ళీ తీయండి.";
+    } else if (result.isHealthy) {
+      text = `మీ ${result.cropName} పంట ఆరోగ్యంగా ఉంది. ఎటువంటి వ్యాధి కనిపించలేదు.`;
+    } else {
+      text = [
+        `మీ ${result.cropName} పంటలో సమస్య కనిపించింది.`,
+        result.teluguDiseaseName || result.diseaseName,
+        result.teluguSymptoms ? `లక్షణాలు: ${result.teluguSymptoms}` : "",
+        result.teluguTreatment ? `చికిత్స: ${result.teluguTreatment}` : "",
+      ]
+        .filter(Boolean)
+        .join(". ");
+    }
+
+    setSpeaking(true);
+    Speech.speak(text, {
+      language: "te-IN",
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  };
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -149,6 +201,17 @@ export default function DiseaseCheckScreen() {
       // with its own confidence score, rather than simply omitting a disease.
       const diseaseIsHealthyLabel = topDisease?.name?.toLowerCase().includes("healthy");
 
+      // The API sometimes returns these fields as a plain string, and sometimes
+      // as an object (e.g. { "Wilting": true, "Brown lesions": true }). Normalize
+      // everything to a displayable string either way.
+      const toDisplayText = (value) => {
+        if (!value) return null;
+        if (typeof value === "string") return value;
+        if (Array.isArray(value)) return value.join(", ");
+        if (typeof value === "object") return Object.keys(value).join(", ");
+        return String(value);
+      };
+
       const diagnosis = {
         cropName: topCrop ? topCrop.name : cropNameInput.trim() || "Unknown crop",
         cropConfidence: topCrop ? topCrop.probability : 0,
@@ -157,13 +220,29 @@ export default function DiseaseCheckScreen() {
         diseaseName: topDisease ? topDisease.name : null,
         diseaseConfidence: topDisease ? topDisease.probability : 0,
         isHealthy: !topDisease || diseaseIsHealthyLabel,
-        treatment: topDisease?.details?.treatment || null,
-        description: topDisease?.details?.description || null,
-        symptoms: topDisease?.details?.symptoms || null,
-        severity: topDisease?.details?.severity || null,
+        treatment: toDisplayText(topDisease?.details?.treatment),
+        description: toDisplayText(topDisease?.details?.description),
+        symptoms: toDisplayText(topDisease?.details?.symptoms),
+        severity: toDisplayText(topDisease?.details?.severity),
       };
 
       setResult(diagnosis);
+
+      // Translate the key farmer-facing fields to Telugu, in parallel, so the
+      // AI diagnosis is usable without reading English.
+      if (!diagnosis.isHealthy && !diagnosis.cropUnclear) {
+        setTranslating(true);
+        const [teluguDiseaseName, teluguSymptoms, teluguTreatment] = await Promise.all([
+          translateToTelugu(diagnosis.diseaseName),
+          translateToTelugu(diagnosis.symptoms),
+          translateToTelugu(diagnosis.treatment),
+        ]);
+        diagnosis.teluguDiseaseName = teluguDiseaseName;
+        diagnosis.teluguSymptoms = teluguSymptoms;
+        diagnosis.teluguTreatment = teluguTreatment;
+        setResult({ ...diagnosis });
+        setTranslating(false);
+      }
 
       // Save to history so the farmer can track past checks
       const {
@@ -234,6 +313,12 @@ export default function DiseaseCheckScreen() {
 
       {result && (
         <View style={styles.resultBox}>
+          <TouchableOpacity style={styles.listenButton} onPress={speakResult} disabled={translating}>
+            <Text style={styles.listenButtonText}>
+              {translating ? "తెలుగులోకి అనువదిస్తోంది..." : speaking ? "⏹️ Stop" : "🔊 తెలుగులో వినండి (Listen)"}
+            </Text>
+          </TouchableOpacity>
+
           <Text style={styles.resultTitle}>
             Crop: {result.cropName}
             {result.cropWasTyped ? " (as you entered)" : ` (${Math.round(result.cropConfidence * 100)}% match)`}
@@ -282,14 +367,18 @@ export default function DiseaseCheckScreen() {
           ) : (
             <>
               <Text style={styles.diseaseTitle}>{result.diseaseName}</Text>
+              {result.teluguDiseaseName && result.teluguDiseaseName !== result.diseaseName && (
+                <Text style={styles.teluguText}>{result.teluguDiseaseName}</Text>
+              )}
               <Text style={styles.resultLine}>Confidence: {Math.round(result.diseaseConfidence * 100)}%</Text>
 
               {result.severity && <Text style={styles.resultLine}>Severity: {result.severity}</Text>}
 
               {result.symptoms && (
                 <View style={styles.infoBlock}>
-                  <Text style={styles.infoLabel}>Symptoms</Text>
+                  <Text style={styles.infoLabel}>Symptoms / లక్షణాలు</Text>
                   <Text style={styles.infoText}>{result.symptoms}</Text>
+                  {result.teluguSymptoms && <Text style={styles.teluguText}>{result.teluguSymptoms}</Text>}
                 </View>
               )}
 
@@ -302,8 +391,9 @@ export default function DiseaseCheckScreen() {
 
               {result.treatment && (
                 <View style={styles.infoBlock}>
-                  <Text style={styles.infoLabel}>General Treatment Guidance</Text>
+                  <Text style={styles.infoLabel}>Treatment / చికిత్స</Text>
                   <Text style={styles.infoText}>{result.treatment}</Text>
+                  {result.teluguTreatment && <Text style={styles.teluguText}>{result.teluguTreatment}</Text>}
                 </View>
               )}
 
@@ -390,6 +480,7 @@ const styles = StyleSheet.create({
   infoBlock: { marginTop: 10 },
   infoLabel: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: 11, marginBottom: 3, textTransform: "uppercase" },
   infoText: { color: COLORS.darkGreenText, fontSize: FONT_SIZES.small, lineHeight: 18 },
+  teluguText: { color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.small, lineHeight: 18, marginTop: 4, fontWeight: "600" },
   healthyText: { color: COLORS.primaryDeepGreen, fontWeight: "600", fontSize: FONT_SIZES.body },
   warning: { color: "#8A5B00", fontSize: FONT_SIZES.small, fontStyle: "italic", marginTop: 10 },
   lowConfidenceNote: { color: "#8A5B00", fontSize: FONT_SIZES.small, marginBottom: 10, fontStyle: "italic" },
@@ -401,4 +492,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   secondaryActionText: { color: COLORS.white, fontWeight: "600", fontSize: FONT_SIZES.small },
+  listenButton: {
+    backgroundColor: COLORS.harvestGold,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  listenButtonText: { color: COLORS.darkGreenText, fontWeight: "700", fontSize: FONT_SIZES.small },
 });
