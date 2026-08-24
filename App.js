@@ -11,6 +11,7 @@ import MyFarmsScreen from "./screens/MyFarmsScreen";
 import FarmCropsScreen from "./screens/FarmCropsScreen";
 import CropPlanScreen from "./screens/CropPlanScreen";
 import MandiPricesScreen from "./screens/MandiPricesScreen";
+import SchemesScreen from "./screens/SchemesScreen";
 import DiseaseCheckScreen from "./screens/DiseaseCheckScreen";
 import ProfitCalculatorScreen from "./screens/ProfitCalculatorScreen";
 import FarmDiaryScreen from "./screens/FarmDiaryScreen";
@@ -28,6 +29,7 @@ const TAB_ICONS = {
   "My Farms": "🚜",
   "Crop Plan": "🌱",
   "Mandi Prices": "📈",
+  Schemes: "🏛️",
   "Disease Check": "📸",
   Profit: "💰",
   Diary: "📔",
@@ -109,6 +111,7 @@ export default function App() {
         <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
         <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
         <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
+        <Tab.Screen name="Schemes" component={SchemesScreen} />
         <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
         <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
         <Tab.Screen name="Diary" component={FarmDiaryScreen} />
