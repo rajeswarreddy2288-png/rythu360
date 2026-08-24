@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 
 import HomeScreen from "./screens/HomeScreen";
+import VoiceAssistantScreen from "./screens/VoiceAssistantScreen";
 import WeatherScreen from "./screens/WeatherScreen";
 import MyFarmsScreen from "./screens/MyFarmsScreen";
 import FarmCropsScreen from "./screens/FarmCropsScreen";
@@ -26,6 +27,7 @@ const FarmStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: "🌾",
+  Voice: "🎙️",
   Weather: "⛅",
   "My Farms": "🚜",
   Calendar: "📅",
@@ -109,6 +111,7 @@ export default function App() {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+        <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
         <Tab.Screen name="Weather" component={WeatherScreen} />
         <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
         <Tab.Screen name="Calendar" component={CropCalendarScreen} />
