@@ -9,6 +9,7 @@ import HomeScreen from "./screens/HomeScreen";
 import WeatherScreen from "./screens/WeatherScreen";
 import MyFarmsScreen from "./screens/MyFarmsScreen";
 import FarmCropsScreen from "./screens/FarmCropsScreen";
+import CropCalendarScreen from "./screens/CropCalendarScreen";
 import CropPlanScreen from "./screens/CropPlanScreen";
 import MandiPricesScreen from "./screens/MandiPricesScreen";
 import SchemesScreen from "./screens/SchemesScreen";
@@ -27,6 +28,7 @@ const TAB_ICONS = {
   Home: "🌾",
   Weather: "⛅",
   "My Farms": "🚜",
+  Calendar: "📅",
   "Crop Plan": "🌱",
   "Mandi Prices": "📈",
   Schemes: "🏛️",
@@ -109,6 +111,7 @@ export default function App() {
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
         <Tab.Screen name="Weather" component={WeatherScreen} />
         <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
+        <Tab.Screen name="Calendar" component={CropCalendarScreen} />
         <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
         <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
         <Tab.Screen name="Schemes" component={SchemesScreen} />
