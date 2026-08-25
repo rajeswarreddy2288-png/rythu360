@@ -4,8 +4,10 @@
     "slug": "rythu360",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/icon.png",
       "backgroundColor": "#F8FAF7"
     },
     "ios": {
@@ -13,6 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#16803C"
       },
       "package": "com.rythu360.app"
