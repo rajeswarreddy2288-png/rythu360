@@ -18,12 +18,20 @@ import DiseaseCheckScreen from "./screens/DiseaseCheckScreen";
 import ProfitCalculatorScreen from "./screens/ProfitCalculatorScreen";
 import FarmDiaryScreen from "./screens/FarmDiaryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import MarketplaceScreen from "./screens/MarketplaceScreen";
+import ProductDetailScreen from "./screens/ProductDetailScreen";
+import CartScreen from "./screens/CartScreen";
+import CheckoutScreen from "./screens/CheckoutScreen";
+import MyOrdersScreen from "./screens/MyOrdersScreen";
+import SellerDashboardScreen from "./screens/SellerDashboardScreen";
 import LoginScreen from "./screens/LoginScreen";
+import { CartProvider } from "./CartContext";
 import { COLORS } from "./constants/colors";
 import { supabase } from "./supabase";
 
 const Tab = createBottomTabNavigator();
 const FarmStack = createNativeStackNavigator();
+const MarketStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: "🌾",
@@ -33,6 +41,7 @@ const TAB_ICONS = {
   Calendar: "📅",
   "Crop Plan": "🌱",
   "Mandi Prices": "📈",
+  Market: "🛒",
   Schemes: "🏛️",
   "Disease Check": "📸",
   Profit: "💰",
@@ -62,6 +71,27 @@ function MyFarmsStack() {
       <FarmStack.Screen name="Farms List" component={MyFarmsScreen} options={{ title: "My Farms" }} />
       <FarmStack.Screen name="Farm Crops" component={FarmCropsScreen} options={{ title: "Crops" }} />
     </FarmStack.Navigator>
+  );
+}
+
+// Stack for the marketplace flow: browse -> product detail -> cart -> checkout,
+// plus order history and seller dashboard, all inside the "Market" tab.
+function MarketplaceStack() {
+  return (
+    <MarketStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: { fontWeight: "700" },
+      }}
+    >
+      <MarketStack.Screen name="Marketplace" component={MarketplaceScreen} />
+      <MarketStack.Screen name="Product Detail" component={ProductDetailScreen} options={{ title: "Product" }} />
+      <MarketStack.Screen name="Cart" component={CartScreen} />
+      <MarketStack.Screen name="Checkout" component={CheckoutScreen} />
+      <MarketStack.Screen name="My Orders" component={MyOrdersScreen} />
+      <MarketStack.Screen name="Seller Dashboard" component={SellerDashboardScreen} options={{ title: "Seller" }} />
+    </MarketStack.Navigator>
   );
 }
 
@@ -97,32 +127,35 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
-          headerTintColor: COLORS.white,
-          headerTitleStyle: { fontWeight: "700" },
-          headerRight: () => <LogoutButton />,
-          tabBarActiveTintColor: COLORS.primaryDeepGreen,
-          tabBarInactiveTintColor: COLORS.gray,
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
-        <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
-        <Tab.Screen name="Weather" component={WeatherScreen} />
-        <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
-        <Tab.Screen name="Calendar" component={CropCalendarScreen} />
-        <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
-        <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
-        <Tab.Screen name="Schemes" component={SchemesScreen} />
-        <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
-        <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
-        <Tab.Screen name="Diary" component={FarmDiaryScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <CartProvider>
+      <NavigationContainer>
+        <StatusBar style="dark" />
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
+            headerTintColor: COLORS.white,
+            headerTitleStyle: { fontWeight: "700" },
+            headerRight: () => <LogoutButton />,
+            tabBarActiveTintColor: COLORS.primaryDeepGreen,
+            tabBarInactiveTintColor: COLORS.gray,
+            tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
+          })}
+        >
+          <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+          <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
+          <Tab.Screen name="Weather" component={WeatherScreen} />
+          <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
+          <Tab.Screen name="Calendar" component={CropCalendarScreen} />
+          <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
+          <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
+          <Tab.Screen name="Market" component={MarketplaceStack} options={{ headerShown: false }} />
+          <Tab.Screen name="Schemes" component={SchemesScreen} />
+          <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
+          <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
+          <Tab.Screen name="Diary" component={FarmDiaryScreen} />
+          <Tab.Screen name="Profile" component={ProfileScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </CartProvider>
   );
 }
