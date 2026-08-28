@@ -24,6 +24,7 @@ import CartScreen from "./screens/CartScreen";
 import CheckoutScreen from "./screens/CheckoutScreen";
 import MyOrdersScreen from "./screens/MyOrdersScreen";
 import SellerDashboardScreen from "./screens/SellerDashboardScreen";
+import AdminScreen from "./screens/AdminScreen";
 import LoginScreen from "./screens/LoginScreen";
 import { CartProvider } from "./CartContext";
 import { COLORS } from "./constants/colors";
@@ -47,6 +48,7 @@ const TAB_ICONS = {
   Profit: "💰",
   Diary: "📔",
   Profile: "👤",
+  Admin: "🛡️",
 };
 
 function LogoutButton() {
@@ -139,6 +141,8 @@ export default function App() {
             tabBarActiveTintColor: COLORS.primaryDeepGreen,
             tabBarInactiveTintColor: COLORS.gray,
             tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
+            tabBarScrollEnabled: true,
+            tabBarItemStyle: { width: 80 },
           })}
         >
           <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
@@ -154,6 +158,7 @@ export default function App() {
           <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
           <Tab.Screen name="Diary" component={FarmDiaryScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />
+          <Tab.Screen name="Admin" component={AdminScreen} />
         </Tab.Navigator>
       </NavigationContainer>
     </CartProvider>
