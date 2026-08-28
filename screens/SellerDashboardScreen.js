@@ -28,12 +28,14 @@ export default function SellerDashboardScreen() {
 
   const [products, setProducts] = useState([]);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null); // null = adding new
   const [productName, setProductName] = useState("");
   const [productCategory, setProductCategory] = useState("");
   const [productPrice, setProductPrice] = useState("");
   const [productStock, setProductStock] = useState("");
   const [productDescription, setProductDescription] = useState("");
-  const [productImages, setProductImages] = useState([]); // [{ uri, base64 }]
+  const [productImages, setProductImages] = useState([]); // [{ uri, base64 }] for new uploads
+  const [existingImageUrls, setExistingImageUrls] = useState([]); // already-uploaded URLs, kept on edit
   const [uploadingImage, setUploadingImage] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -155,6 +157,34 @@ export default function SellerDashboardScreen() {
     setProductImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const removeExistingImage = (index) => {
+    setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const startEditProduct = (product) => {
+    setEditingProductId(product.id);
+    setProductName(product.name || "");
+    setProductCategory(product.category || "");
+    setProductPrice(String(product.price ?? ""));
+    setProductStock(String(product.stock ?? ""));
+    setProductDescription(product.description || "");
+    setExistingImageUrls(product.images && product.images.length > 0 ? product.images : product.image_url ? [product.image_url] : []);
+    setProductImages([]);
+    setShowProductForm(true);
+  };
+
+  const cancelForm = () => {
+    setShowProductForm(false);
+    setEditingProductId(null);
+    setProductName("");
+    setProductCategory("");
+    setProductPrice("");
+    setProductStock("");
+    setProductDescription("");
+    setProductImages([]);
+    setExistingImageUrls([]);
+  };
+
   const addProduct = async () => {
     if (!productName.trim() || !productPrice.trim()) {
       Alert.alert("Missing info", "Please enter at least product name and price.");
@@ -162,7 +192,7 @@ export default function SellerDashboardScreen() {
     }
     setSavingProduct(true);
 
-    const uploadedUrls = [];
+    const newlyUploadedUrls = [];
 
     if (productImages.length > 0) {
       setUploadingImage(true);
@@ -182,45 +212,52 @@ export default function SellerDashboardScreen() {
         }
 
         const { data: publicUrlData } = supabase.storage.from("product-images").getPublicUrl(fileName);
-        uploadedUrls.push(publicUrlData.publicUrl);
+        newlyUploadedUrls.push(publicUrlData.publicUrl);
       }
 
       setUploadingImage(false);
     }
 
-    const { error } = await supabase.from("products").insert([
-      {
-        seller_id: seller.id,
-        name: productName,
-        category: productCategory,
-        price: parseFloat(productPrice) || 0,
-        stock: parseInt(productStock) || 0,
-        description: productDescription,
-        image_url: uploadedUrls[0] || null, // first photo doubles as the thumbnail
-        images: uploadedUrls,
-      },
-    ]);
+    // Combine any kept existing photos (when editing) with newly uploaded ones
+    const finalImages = [...existingImageUrls, ...newlyUploadedUrls];
+
+    const payload = {
+      name: productName,
+      category: productCategory,
+      price: parseFloat(productPrice) || 0,
+      stock: parseInt(productStock) || 0,
+      description: productDescription,
+      image_url: finalImages[0] || null,
+      images: finalImages,
+    };
+
+    const { error } = editingProductId
+      ? await supabase.from("products").update(payload).eq("id", editingProductId)
+      : await supabase.from("products").insert([{ ...payload, seller_id: seller.id }]);
 
     setSavingProduct(false);
 
     if (error) {
-      Alert.alert("Could not add product", error.message);
+      Alert.alert(editingProductId ? "Could not update product" : "Could not add product", error.message);
       return;
     }
 
-    setProductName("");
-    setProductCategory("");
-    setProductPrice("");
-    setProductStock("");
-    setProductDescription("");
-    setProductImages([]);
-    setShowProductForm(false);
+    cancelForm();
     loadSeller();
   };
 
   const deleteProduct = async (id) => {
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (!error) setProducts((prev) => prev.filter((p) => p.id !== id));
+    Alert.alert("Delete product?", "This will remove it from the marketplace permanently.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const { error } = await supabase.from("products").delete().eq("id", id);
+          if (!error) setProducts((prev) => prev.filter((p) => p.id !== id));
+        },
+      },
+    ]);
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -295,12 +332,17 @@ export default function SellerDashboardScreen() {
       <Text style={styles.title}>🏪 {seller.shop_name}</Text>
       <Text style={styles.subtitle}>✅ Approved seller</Text>
 
-      <TouchableOpacity style={styles.addToggle} onPress={() => setShowProductForm((p) => !p)}>
+      <TouchableOpacity
+        style={styles.addToggle}
+        onPress={() => (showProductForm ? cancelForm() : setShowProductForm(true))}
+      >
         <Text style={styles.addToggleText}>{showProductForm ? "Cancel" : "+ Add a Product"}</Text>
       </TouchableOpacity>
 
       {showProductForm && (
         <View style={styles.form}>
+          <Text style={styles.formTitle}>{editingProductId ? "Edit Product" : "New Product"}</Text>
+
           <Text style={styles.label}>Product Name</Text>
           <TextInput style={styles.input} value={productName} onChangeText={setProductName} placeholder="e.g. NPK Fertilizer 50kg" />
 
@@ -322,12 +364,14 @@ export default function SellerDashboardScreen() {
             placeholder="Brief details about the product"
           />
 
-          <Text style={styles.label}>Product Photos ({productImages.length}/{MAX_IMAGES})</Text>
+          <Text style={styles.label}>
+            Product Photos ({existingImageUrls.length + productImages.length}/{MAX_IMAGES})
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
-            {productImages.map((img, index) => (
-              <View key={index} style={styles.thumbWrapper}>
-                <Image source={{ uri: img.uri }} style={styles.thumbImage} />
-                <TouchableOpacity style={styles.thumbRemove} onPress={() => removeProductImage(index)}>
+            {existingImageUrls.map((url, index) => (
+              <View key={`existing-${index}`} style={styles.thumbWrapper}>
+                <Image source={{ uri: url }} style={styles.thumbImage} />
+                <TouchableOpacity style={styles.thumbRemove} onPress={() => removeExistingImage(index)}>
                   <Text style={styles.thumbRemoveText}>✕</Text>
                 </TouchableOpacity>
                 {index === 0 && (
@@ -338,7 +382,21 @@ export default function SellerDashboardScreen() {
               </View>
             ))}
 
-            {productImages.length < MAX_IMAGES && (
+            {productImages.map((img, index) => (
+              <View key={`new-${index}`} style={styles.thumbWrapper}>
+                <Image source={{ uri: img.uri }} style={styles.thumbImage} />
+                <TouchableOpacity style={styles.thumbRemove} onPress={() => removeProductImage(index)}>
+                  <Text style={styles.thumbRemoveText}>✕</Text>
+                </TouchableOpacity>
+                {existingImageUrls.length === 0 && index === 0 && (
+                  <View style={styles.thumbMainBadge}>
+                    <Text style={styles.thumbMainBadgeText}>Main</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {existingImageUrls.length + productImages.length < MAX_IMAGES && (
               <TouchableOpacity style={styles.addThumbButton} onPress={pickProductImage}>
                 <Text style={styles.addThumbButtonText}>+ Add{"\n"}Photo</Text>
               </TouchableOpacity>
@@ -354,7 +412,13 @@ export default function SellerDashboardScreen() {
             disabled={savingProduct || uploadingImage}
           >
             <Text style={styles.buttonText}>
-              {uploadingImage ? "Uploading photos..." : savingProduct ? "Saving..." : "Save Product"}
+              {uploadingImage
+                ? "Uploading photos..."
+                : savingProduct
+                ? "Saving..."
+                : editingProductId
+                ? "Update Product"
+                : "Save Product"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -369,6 +433,9 @@ export default function SellerDashboardScreen() {
               ₹{p.price} • {p.stock} in stock
             </Text>
           </View>
+          <TouchableOpacity onPress={() => startEditProduct(p)} style={styles.editButton}>
+            <Text style={styles.editText}>Edit</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => deleteProduct(p.id)}>
             <Text style={styles.deleteText}>✕</Text>
           </TouchableOpacity>
@@ -497,6 +564,15 @@ const styles = StyleSheet.create({
   productName: { fontWeight: "700", color: COLORS.darkGreenText, fontSize: FONT_SIZES.small },
   productMeta: { color: COLORS.gray, fontSize: 11, marginTop: 2 },
   deleteText: { color: COLORS.gray, fontSize: 16, paddingHorizontal: 8 },
+  formTitle: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.body, marginBottom: 6 },
+  editButton: {
+    backgroundColor: COLORS.lightGreenCard,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  editText: { color: COLORS.primaryDeepGreen, fontSize: 12, fontWeight: "600" },
   orderCard: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
