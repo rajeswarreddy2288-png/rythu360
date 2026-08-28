@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
 
@@ -11,6 +11,10 @@ const STATUS_COLORS = {
   Delivered: COLORS.primaryDeepGreen,
   Cancelled: "#B3261E",
 };
+
+// Once a seller starts preparing or the order is out for delivery, it's too
+// late for the farmer to self-cancel — they'd need to contact the seller directly.
+const CANCELLABLE_STATUSES = ["Placed", "Seller Accepted"];
 
 export default function MyOrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
@@ -42,6 +46,24 @@ export default function MyOrdersScreen({ navigation }) {
     const unsubscribe = navigation.addListener("focus", loadOrders);
     return unsubscribe;
   }, [loadOrders, navigation]);
+
+  const cancelOrder = async (orderId) => {
+    Alert.alert("Cancel this order?", "This cannot be undone.", [
+      { text: "No", style: "cancel" },
+      {
+        text: "Yes, cancel",
+        style: "destructive",
+        onPress: async () => {
+          const { error } = await supabase.from("orders").update({ status: "Cancelled" }).eq("id", orderId);
+          if (error) {
+            Alert.alert("Could not cancel order", error.message);
+          } else {
+            loadOrders();
+          }
+        },
+      },
+    ]);
+  };
 
   if (loading) {
     return (
@@ -81,6 +103,12 @@ export default function MyOrdersScreen({ navigation }) {
               <Text style={styles.totalText}>Total: ₹{Number(item.total).toLocaleString("en-IN")}</Text>
               <Text style={styles.dateText}>{new Date(item.created_at).toLocaleDateString("en-IN")}</Text>
             </View>
+
+            {CANCELLABLE_STATUSES.includes(item.status) && (
+              <TouchableOpacity style={styles.cancelButton} onPress={() => cancelOrder(item.id)}>
+                <Text style={styles.cancelButtonText}>Cancel Order</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       />
@@ -109,4 +137,12 @@ const styles = StyleSheet.create({
   orderFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   totalText: { fontWeight: "700", color: COLORS.darkGreenText, fontSize: FONT_SIZES.small },
   dateText: { color: COLORS.gray, fontSize: 11 },
+  cancelButton: {
+    backgroundColor: "#FDECEA",
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  cancelButtonText: { color: "#B3261E", fontWeight: "700", fontSize: 12 },
 });

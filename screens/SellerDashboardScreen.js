@@ -456,7 +456,7 @@ export default function SellerDashboardScreen() {
           <Text style={styles.orderPhone}>📞 {order.delivery_phone}</Text>
 
           <View style={styles.statusButtons}>
-            {["Seller Accepted", "Preparing", "Out for Delivery", "Delivered"].map((status) => (
+            {["Seller Accepted", "Preparing", "Out for Delivery", "Delivered", "Cancelled"].map((status) => (
               <TouchableOpacity
                 key={status}
                 style={[styles.statusPill, order.status === status && styles.statusPillActive]}
