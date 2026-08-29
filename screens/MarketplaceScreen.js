@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image } from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
+import { useWishlist } from "../WishlistContext";
 
 export default function MarketplaceScreen({ navigation }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const { isWishlisted, toggleWishlist } = useWishlist();
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -89,6 +91,10 @@ export default function MarketplaceScreen({ navigation }) {
           <Text style={styles.cartButtonText}>🛍️ View Cart</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.wishlistButton} onPress={() => navigation.navigate("Wishlist")}>
+          <Text style={styles.wishlistButtonText}>❤️ View Wishlist</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.sellerLink} onPress={() => navigation.navigate("Seller Dashboard")}>
           <Text style={styles.sellerLinkText}>Are you a seller? Register your shop →</Text>
         </TouchableOpacity>
@@ -113,6 +119,10 @@ export default function MarketplaceScreen({ navigation }) {
               style={styles.productCard}
               onPress={() => navigation.navigate("Product Detail", { product: item })}
             >
+              <TouchableOpacity style={styles.heartButton} onPress={() => toggleWishlist(item)}>
+                <Text style={{ fontSize: 16 }}>{isWishlisted(item.id) ? "❤️" : "🤍"}</Text>
+              </TouchableOpacity>
+
               <View style={styles.imagePlaceholder}>
                 {item.image_url ? (
                   <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />

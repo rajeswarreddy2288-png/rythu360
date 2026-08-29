@@ -24,9 +24,11 @@ import CartScreen from "./screens/CartScreen";
 import CheckoutScreen from "./screens/CheckoutScreen";
 import MyOrdersScreen from "./screens/MyOrdersScreen";
 import SellerDashboardScreen from "./screens/SellerDashboardScreen";
+import WishlistScreen from "./screens/WishlistScreen";
 import AdminScreen from "./screens/AdminScreen";
 import LoginScreen from "./screens/LoginScreen";
 import { CartProvider } from "./CartContext";
+import { WishlistProvider } from "./WishlistContext";
 import { COLORS } from "./constants/colors";
 import { supabase } from "./supabase";
 
@@ -92,6 +94,7 @@ function MarketplaceStack() {
       <MarketStack.Screen name="Cart" component={CartScreen} />
       <MarketStack.Screen name="Checkout" component={CheckoutScreen} />
       <MarketStack.Screen name="My Orders" component={MyOrdersScreen} />
+      <MarketStack.Screen name="Wishlist" component={WishlistScreen} />
       <MarketStack.Screen name="Seller Dashboard" component={SellerDashboardScreen} options={{ title: "Seller" }} />
     </MarketStack.Navigator>
   );
@@ -130,37 +133,39 @@ export default function App() {
 
   return (
     <CartProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
-            headerTintColor: COLORS.white,
-            headerTitleStyle: { fontWeight: "700" },
-            headerRight: () => <LogoutButton />,
-            tabBarActiveTintColor: COLORS.primaryDeepGreen,
-            tabBarInactiveTintColor: COLORS.gray,
-            tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
-            tabBarScrollEnabled: true,
-            tabBarItemStyle: { width: 80 },
-          })}
-        >
-          <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
-          <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
-          <Tab.Screen name="Weather" component={WeatherScreen} />
-          <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
-          <Tab.Screen name="Calendar" component={CropCalendarScreen} />
-          <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
-          <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
-          <Tab.Screen name="Market" component={MarketplaceStack} options={{ headerShown: false }} />
-          <Tab.Screen name="Schemes" component={SchemesScreen} />
-          <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
-          <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
-          <Tab.Screen name="Diary" component={FarmDiaryScreen} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
-          <Tab.Screen name="Admin" component={AdminScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <WishlistProvider>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
+              headerTintColor: COLORS.white,
+              headerTitleStyle: { fontWeight: "700" },
+              headerRight: () => <LogoutButton />,
+              tabBarActiveTintColor: COLORS.primaryDeepGreen,
+              tabBarInactiveTintColor: COLORS.gray,
+              tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
+              tabBarScrollEnabled: true,
+              tabBarItemStyle: { width: 80 },
+            })}
+          >
+            <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+            <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
+            <Tab.Screen name="Weather" component={WeatherScreen} />
+            <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
+            <Tab.Screen name="Calendar" component={CropCalendarScreen} />
+            <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
+            <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
+            <Tab.Screen name="Market" component={MarketplaceStack} options={{ headerShown: false }} />
+            <Tab.Screen name="Schemes" component={SchemesScreen} />
+            <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
+            <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
+            <Tab.Screen name="Diary" component={FarmDiaryScreen} />
+            <Tab.Screen name="Profile" component={ProfileScreen} />
+            <Tab.Screen name="Admin" component={AdminScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </WishlistProvider>
     </CartProvider>
   );
 }
