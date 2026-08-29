@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
 
@@ -11,12 +11,54 @@ export default function AdminScreen() {
   const [isAdmin, setIsAdmin] = useState(null);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("stats"); // "stats" | "sellers"
+  const [stats, setStats] = useState(null);
 
   const loadSellers = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
     if (!error) setSellers(data);
-    setLoading(false);
+  }, []);
+
+  const loadStats = useCallback(async () => {
+    // Run these counts in parallel for speed
+    const [
+      { count: farmerCount },
+      { count: sellerCount },
+      { count: approvedSellerCount },
+      { count: productCount },
+      { count: orderCount },
+      { count: deliveredCount },
+      { count: pendingCount },
+      { count: cancelledCount },
+      { data: orderTotals },
+      { count: reviewCount },
+    ] = await Promise.all([
+      supabase.from("farmer_profiles").select("*", { count: "exact", head: true }),
+      supabase.from("sellers").select("*", { count: "exact", head: true }),
+      supabase.from("sellers").select("*", { count: "exact", head: true }).eq("is_approved", true),
+      supabase.from("products").select("*", { count: "exact", head: true }),
+      supabase.from("orders").select("*", { count: "exact", head: true }),
+      supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Delivered"),
+      supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["Placed", "Seller Accepted", "Preparing", "Out for Delivery"]),
+      supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Cancelled"),
+      supabase.from("orders").select("total").neq("status", "Cancelled"),
+      supabase.from("reviews").select("*", { count: "exact", head: true }),
+    ]);
+
+    const totalSales = (orderTotals || []).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    setStats({
+      farmerCount: farmerCount || 0,
+      sellerCount: sellerCount || 0,
+      approvedSellerCount: approvedSellerCount || 0,
+      productCount: productCount || 0,
+      orderCount: orderCount || 0,
+      deliveredCount: deliveredCount || 0,
+      pendingCount: pendingCount || 0,
+      cancelledCount: cancelledCount || 0,
+      totalSales,
+      reviewCount: reviewCount || 0,
+    });
   }, []);
 
   useEffect(() => {
@@ -28,10 +70,14 @@ export default function AdminScreen() {
       const admin = user && ADMIN_EMAILS.includes(user.email);
       setIsAdmin(admin);
 
-      if (admin) loadSellers();
+      if (admin) {
+        setLoading(true);
+        await Promise.all([loadSellers(), loadStats()]);
+        setLoading(false);
+      }
     };
     checkAdmin();
-  }, [loadSellers]);
+  }, [loadSellers, loadStats]);
 
   const approveSeller = async (id) => {
     const { error } = await supabase.from("sellers").update({ is_approved: true }).eq("id", id);
@@ -39,6 +85,7 @@ export default function AdminScreen() {
       Alert.alert("Could not approve", error.message);
     } else {
       loadSellers();
+      loadStats();
     }
   };
 
@@ -50,7 +97,10 @@ export default function AdminScreen() {
         style: "destructive",
         onPress: async () => {
           const { error } = await supabase.from("sellers").update({ is_approved: false }).eq("id", id);
-          if (!error) loadSellers();
+          if (!error) {
+            loadSellers();
+            loadStats();
+          }
         },
       },
     ]);
@@ -80,11 +130,53 @@ export default function AdminScreen() {
     <View style={styles.container}>
       <View style={{ padding: 20, paddingBottom: 0 }}>
         <Text style={styles.title}>🛡️ Admin Dashboard</Text>
-        <Text style={styles.subtitle}>Review and approve seller shop registrations</Text>
+        <Text style={styles.subtitle}>Overview and seller management</Text>
+
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "stats" && styles.tabButtonActive]}
+            onPress={() => setActiveTab("stats")}
+          >
+            <Text style={[styles.tabButtonText, activeTab === "stats" && styles.tabButtonTextActive]}>
+              📊 Stats
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "sellers" && styles.tabButtonActive]}
+            onPress={() => setActiveTab("sellers")}
+          >
+            <Text style={[styles.tabButtonText, activeTab === "sellers" && styles.tabButtonTextActive]}>
+              🏪 Sellers {pending.length > 0 ? `(${pending.length} pending)` : ""}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primaryDeepGreen} style={{ marginTop: 20 }} />
+      ) : activeTab === "stats" ? (
+        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 10 }}>
+          <View style={styles.statsGrid}>
+            <StatCard label="Farmers" value={stats?.farmerCount} icon="👨‍🌾" />
+            <StatCard label="Sellers" value={stats?.sellerCount} icon="🏪" />
+            <StatCard label="Approved Sellers" value={stats?.approvedSellerCount} icon="✅" />
+            <StatCard label="Products Listed" value={stats?.productCount} icon="📦" />
+          </View>
+
+          <Text style={styles.sectionHeader}>Orders</Text>
+          <View style={styles.statsGrid}>
+            <StatCard label="Total Orders" value={stats?.orderCount} icon="🛒" />
+            <StatCard label="Pending" value={stats?.pendingCount} icon="⏳" color={COLORS.harvestGold} />
+            <StatCard label="Delivered" value={stats?.deliveredCount} icon="✅" color={COLORS.primaryDeepGreen} />
+            <StatCard label="Cancelled" value={stats?.cancelledCount} icon="✕" color="#B3261E" />
+          </View>
+
+          <Text style={styles.sectionHeader}>Sales & Reviews</Text>
+          <View style={styles.statsGrid}>
+            <StatCard label="Total Sales" value={`₹${(stats?.totalSales || 0).toLocaleString("en-IN")}`} icon="💰" wide />
+            <StatCard label="Reviews Submitted" value={stats?.reviewCount} icon="⭐" wide />
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={[
@@ -123,6 +215,16 @@ export default function AdminScreen() {
           }}
         />
       )}
+    </View>
+  );
+}
+
+function StatCard({ label, value, icon, color, wide }) {
+  return (
+    <View style={[styles.statCard, wide && styles.statCardWide]}>
+      <Text style={styles.statIcon}>{icon}</Text>
+      <Text style={[styles.statValue, color && { color }]}>{value ?? "—"}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -167,4 +269,31 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   revokeButtonText: { color: "#B3261E", fontWeight: "700", fontSize: FONT_SIZES.small },
+  tabRow: { flexDirection: "row", gap: 10, marginTop: 14, marginBottom: 4 },
+  tabButton: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  tabButtonActive: { backgroundColor: COLORS.primaryDeepGreen, borderColor: COLORS.primaryDeepGreen },
+  tabButtonText: { color: COLORS.darkGreenText, fontWeight: "700", fontSize: 12 },
+  tabButtonTextActive: { color: COLORS.white },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4, marginBottom: 6 },
+  statCard: {
+    width: "47%",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+  },
+  statCardWide: { width: "100%" },
+  statIcon: { fontSize: 22, marginBottom: 6 },
+  statValue: { fontSize: FONT_SIZES.h2, fontWeight: "700", color: COLORS.primaryDeepGreen },
+  statLabel: { fontSize: 11, color: COLORS.gray, marginTop: 4, textAlign: "center" },
 });
