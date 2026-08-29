@@ -4,12 +4,19 @@ import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
 import { useWishlist } from "../WishlistContext";
 
-export default function MarketplaceScreen({ navigation }) {
+export default function MarketplaceScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [search, setSearch] = useState(route?.params?.initialSearch || "");
+  const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || "All");
   const { isWishlisted, toggleWishlist } = useWishlist();
+
+  // If Home navigates here again with new params (e.g. a different category
+  // tapped while already on this screen), pick up the fresh values.
+  useEffect(() => {
+    if (route?.params?.initialSearch !== undefined) setSearch(route.params.initialSearch);
+    if (route?.params?.initialCategory !== undefined) setSelectedCategory(route.params.initialCategory);
+  }, [route?.params?.initialSearch, route?.params?.initialCategory]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
