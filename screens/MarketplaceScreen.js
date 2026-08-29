@@ -21,7 +21,22 @@ export default function MarketplaceScreen({ navigation }) {
     if (!error) {
       // Only show products from approved sellers
       const approved = (data || []).filter((p) => p.sellers?.is_approved);
-      setProducts(approved);
+
+      // Pull all reviews once and compute each product's average rating client-side
+      const { data: reviews } = await supabase.from("reviews").select("product_id, rating");
+      const ratingsByProduct = {};
+      (reviews || []).forEach((r) => {
+        if (!ratingsByProduct[r.product_id]) ratingsByProduct[r.product_id] = [];
+        ratingsByProduct[r.product_id].push(r.rating);
+      });
+
+      const withRatings = approved.map((p) => {
+        const ratings = ratingsByProduct[p.id] || [];
+        const avg = ratings.length ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
+        return { ...p, avgRating: avg, reviewCount: ratings.length };
+      });
+
+      setProducts(withRatings);
     }
     setLoading(false);
   }, []);
@@ -134,6 +149,11 @@ export default function MarketplaceScreen({ navigation }) {
                 {item.name}
               </Text>
               <Text style={styles.productPrice}>₹{item.price}</Text>
+              {item.avgRating !== null && (
+                <Text style={styles.ratingText}>
+                  ⭐ {item.avgRating.toFixed(1)} ({item.reviewCount})
+                </Text>
+              )}
               <Text style={styles.productSeller} numberOfLines={1}>
                 {item.sellers?.shop_name} • {item.sellers?.village}
               </Text>
@@ -208,4 +228,5 @@ const styles = StyleSheet.create({
   productPrice: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.body, marginTop: 4 },
   productSeller: { color: COLORS.gray, fontSize: 10, marginTop: 4 },
   productStock: { color: COLORS.gray, fontSize: 10, marginTop: 2 },
+  ratingText: { color: "#B8860B", fontSize: 11, marginTop: 2, fontWeight: "600" },
 });

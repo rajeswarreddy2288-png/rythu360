@@ -19,6 +19,8 @@ const CANCELLABLE_STATUSES = ["Placed", "Seller Accepted"];
 export default function MyOrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myReviews, setMyReviews] = useState({}); // key: "orderId_productId" -> { rating, comment }
+  const [ratingDrafts, setRatingDrafts] = useState({}); // in-progress star taps before submit
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -38,8 +40,47 @@ export default function MyOrdersScreen({ navigation }) {
       .order("created_at", { ascending: false });
 
     if (!error) setOrders(data);
+
+    const { data: reviews } = await supabase.from("reviews").select("*").eq("user_id", user.id);
+    if (reviews) {
+      const map = {};
+      reviews.forEach((r) => {
+        map[`${r.order_id}_${r.product_id}`] = r;
+      });
+      setMyReviews(map);
+    }
+
     setLoading(false);
   }, []);
+
+  const setDraftRating = (key, rating) => {
+    setRatingDrafts((prev) => ({ ...prev, [key]: rating }));
+  };
+
+  const submitReview = async (orderId, productId) => {
+    const key = `${orderId}_${productId}`;
+    const rating = ratingDrafts[key];
+
+    if (!rating) {
+      Alert.alert("Pick a rating", "Tap a star to rate this product first.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("reviews")
+      .insert([{ user_id: user.id, product_id: productId, order_id: orderId, rating }]);
+
+    if (error) {
+      Alert.alert("Could not submit review", error.message);
+    } else {
+      loadOrders();
+    }
+  };
 
   useEffect(() => {
     loadOrders();
@@ -93,11 +134,44 @@ export default function MyOrdersScreen({ navigation }) {
               </View>
             </View>
 
-            {item.order_items?.map((oi) => (
-              <Text key={oi.id} style={styles.itemLine}>
-                {oi.quantity} × {oi.product_name} — ₹{oi.price * oi.quantity}
-              </Text>
-            ))}
+            {item.order_items?.map((oi) => {
+              const reviewKey = `${item.id}_${oi.product_id}`;
+              const existingReview = myReviews[reviewKey];
+              const draftRating = ratingDrafts[reviewKey] || 0;
+
+              return (
+                <View key={oi.id}>
+                  <Text style={styles.itemLine}>
+                    {oi.quantity} × {oi.product_name} — ₹{oi.price * oi.quantity}
+                  </Text>
+
+                  {item.status === "Delivered" && (
+                    <View style={styles.reviewRow}>
+                      {existingReview ? (
+                        <Text style={styles.reviewedText}>
+                          You rated this: {"⭐".repeat(existingReview.rating)}
+                        </Text>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View style={{ flexDirection: "row" }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <TouchableOpacity key={star} onPress={() => setDraftRating(reviewKey, star)}>
+                                <Text style={styles.star}>{star <= draftRating ? "⭐" : "☆"}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          {draftRating > 0 && (
+                            <TouchableOpacity onPress={() => submitReview(item.id, oi.product_id)}>
+                              <Text style={styles.submitReviewText}>Submit</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
 
             <View style={styles.orderFooter}>
               <Text style={styles.totalText}>Total: ₹{Number(item.total).toLocaleString("en-IN")}</Text>
@@ -145,4 +219,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   cancelButtonText: { color: "#B3261E", fontWeight: "700", fontSize: 12 },
+  reviewRow: { marginTop: 4, marginBottom: 6 },
+  star: { fontSize: 18, marginRight: 2 },
+  submitReviewText: { color: COLORS.primaryDeepGreen, fontWeight: "700", fontSize: 12 },
+  reviewedText: { color: COLORS.gray, fontSize: 12, fontStyle: "italic" },
 });

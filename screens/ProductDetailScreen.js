@@ -86,6 +86,11 @@ export default function ProductDetailScreen({ route, navigation }) {
       <View style={styles.content}>
         <Text style={styles.name}>{product.name}</Text>
         <Text style={styles.price}>₹{product.price}</Text>
+        {product.avgRating != null && (
+          <Text style={styles.rating}>
+            ⭐ {product.avgRating.toFixed(1)} ({product.reviewCount} review{product.reviewCount === 1 ? "" : "s"})
+          </Text>
+        )}
         <Text style={styles.seller}>
           Sold by: {product.sellers?.shop_name} • {product.sellers?.village}
         </Text>
@@ -148,6 +153,7 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   name: { fontSize: FONT_SIZES.h2, fontWeight: "700", color: COLORS.primaryDeepGreen },
   price: { fontSize: FONT_SIZES.h1, fontWeight: "700", color: COLORS.darkGreenText, marginTop: 6 },
+  rating: { color: "#B8860B", fontSize: FONT_SIZES.small, marginTop: 4, fontWeight: "600" },
   seller: { color: COLORS.gray, fontSize: FONT_SIZES.small, marginTop: 6 },
   stock: { color: COLORS.gray, fontSize: FONT_SIZES.small, marginTop: 2 },
   description: { color: COLORS.darkGreenText, fontSize: FONT_SIZES.small, marginTop: 14, lineHeight: 18 },
