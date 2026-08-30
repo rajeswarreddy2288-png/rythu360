@@ -25,6 +25,7 @@ import CheckoutScreen from "./screens/CheckoutScreen";
 import MyOrdersScreen from "./screens/MyOrdersScreen";
 import SellerDashboardScreen from "./screens/SellerDashboardScreen";
 import WishlistScreen from "./screens/WishlistScreen";
+import NotificationsScreen from "./screens/NotificationsScreen";
 import AdminScreen from "./screens/AdminScreen";
 import LoginScreen from "./screens/LoginScreen";
 import { CartProvider } from "./CartContext";
@@ -38,6 +39,7 @@ const MarketStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: "🌾",
+  Notifications: "🔔",
   Voice: "🎙️",
   Weather: "⛅",
   "My Farms": "🚜",
@@ -150,6 +152,7 @@ export default function App() {
             })}
           >
             <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+            <Tab.Screen name="Notifications" component={NotificationsScreen} />
             <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
             <Tab.Screen name="Weather" component={WeatherScreen} />
             <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
+import { notify } from "../notify";
 
 // Simple email-based admin check. Only accounts logged in with this email
 // can see/use the admin screen. Add more emails to this list if needed.
@@ -84,6 +85,10 @@ export default function AdminScreen() {
     if (error) {
       Alert.alert("Could not approve", error.message);
     } else {
+      const seller = sellers.find((s) => s.id === id);
+      if (seller?.user_id) {
+        notify(seller.user_id, "Shop Approved! ✅", `Your shop "${seller.shop_name}" is now live on the marketplace.`);
+      }
       loadSellers();
       loadStats();
     }

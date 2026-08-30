@@ -9,6 +9,8 @@ export default function MarketplaceScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(route?.params?.initialSearch || "");
   const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || "All");
+  const [sortBy, setSortBy] = useState("newest"); // newest | price_low | price_high | rating
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const { isWishlisted, toggleWishlist } = useWishlist();
 
   // If Home navigates here again with new params (e.g. a different category
@@ -61,11 +63,25 @@ export default function MarketplaceScreen({ navigation, route }) {
     ...Array.from(new Set(products.map((p) => p.category?.trim()).filter(Boolean))),
   ];
 
-  const filtered = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || p.category?.trim() === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filtered = products
+    .filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = selectedCategory === "All" || p.category?.trim() === selectedCategory;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      if (sortBy === "price_low") return a.price - b.price;
+      if (sortBy === "price_high") return b.price - a.price;
+      if (sortBy === "rating") return (b.avgRating || 0) - (a.avgRating || 0);
+      return 0; // "newest" — already sorted by created_at from the query
+    });
+
+  const SORT_OPTIONS = [
+    { key: "newest", label: "Newest" },
+    { key: "price_low", label: "Price: Low to High" },
+    { key: "price_high", label: "Price: High to Low" },
+    { key: "rating", label: "Highest Rated" },
+  ];
 
   return (
     <View style={styles.container}>
@@ -100,6 +116,35 @@ export default function MarketplaceScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
           />
+        )}
+
+        <View style={styles.sortRow}>
+          <Text style={styles.resultCount}>{filtered.length} products</Text>
+          <TouchableOpacity style={styles.sortButton} onPress={() => setShowSortMenu((prev) => !prev)}>
+            <Text style={styles.sortButtonText}>
+              Sort: {SORT_OPTIONS.find((o) => o.key === sortBy)?.label} {showSortMenu ? "▲" : "▼"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showSortMenu && (
+          <View style={styles.sortMenu}>
+            {SORT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={styles.sortMenuItem}
+                onPress={() => {
+                  setSortBy(opt.key);
+                  setShowSortMenu(false);
+                }}
+              >
+                <Text style={[styles.sortMenuItemText, sortBy === opt.key && styles.sortMenuItemTextActive]}>
+                  {sortBy === opt.key ? "✓ " : ""}
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         <View style={styles.noticeBox}>
@@ -188,6 +233,28 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   noticeBox: { backgroundColor: COLORS.goldTint, borderRadius: 10, padding: 10, marginBottom: 12 },
+  sortRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  resultCount: { fontSize: 12, color: COLORS.gray },
+  sortButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  sortButtonText: { fontSize: 12, color: COLORS.darkGreenText, fontWeight: "600" },
+  sortMenu: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 10,
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  sortMenuItem: { paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: COLORS.offWhite },
+  sortMenuItemText: { fontSize: 13, color: COLORS.darkGreenText },
+  sortMenuItemTextActive: { fontWeight: "700", color: COLORS.primaryDeepGreen },
   categoryChip: {
     backgroundColor: COLORS.white,
     borderWidth: 1,

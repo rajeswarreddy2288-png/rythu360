@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import { decode } from "base64-arraybuffer";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { supabase } from "../supabase";
+import { notify } from "../notify";
 
 export default function SellerDashboardScreen() {
   const [loading, setLoading] = useState(true);
@@ -261,8 +262,18 @@ export default function SellerDashboardScreen() {
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
+    const order = orders.find((o) => o.id === orderId);
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
-    if (!error) loadSeller();
+    if (!error) {
+      if (order?.user_id) {
+        notify(
+          order.user_id,
+          `Order ${newStatus}`,
+          `Your order from ${seller.shop_name} is now: ${newStatus}.`
+        );
+      }
+      loadSeller();
+    }
   };
 
   if (loading) {
