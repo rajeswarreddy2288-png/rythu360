@@ -60,11 +60,11 @@ export default function HomeScreen({ navigation }) {
   };
 
   const goToMarketSearch = () => {
-    navigation.navigate("Market", { screen: "Marketplace", params: { initialSearch: search } });
+    navigation.navigate("Shop", { screen: "Marketplace", params: { initialSearch: search } });
   };
 
   const goToCategory = (category) => {
-    navigation.navigate("Market", { screen: "Marketplace", params: { initialCategory: category } });
+    navigation.navigate("Shop", { screen: "Marketplace", params: { initialCategory: category } });
   };
 
   return (
@@ -101,12 +101,12 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>🌾 My Crops</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("My Farms")}>
+        <TouchableOpacity onPress={() => navigation.navigate("My Farm")}>
           <Text style={styles.seeAll}>See all →</Text>
         </TouchableOpacity>
       </View>
       {myCrops.length === 0 ? (
-        <TouchableOpacity style={styles.emptyCropsCard} onPress={() => navigation.navigate("My Farms")}>
+        <TouchableOpacity style={styles.emptyCropsCard} onPress={() => navigation.navigate("My Farm")}>
           <Text style={styles.emptyCropsText}>+ Add your first crop to track it here</Text>
         </TouchableOpacity>
       ) : (
@@ -123,7 +123,7 @@ export default function HomeScreen({ navigation }) {
         })
       )}
 
-      <TouchableOpacity style={styles.doctorCard} onPress={() => navigation.navigate("Disease Check")}>
+      <TouchableOpacity style={styles.doctorCard} onPress={() => navigation.navigate("My Farm", { screen: "Farm Disease Check" })}>
         <Text style={styles.doctorEmoji}>📷</Text>
         <View style={{ flex: 1 }}>
           <Text style={styles.doctorTitle}>Crop Doctor</Text>
@@ -133,15 +133,15 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <View style={styles.quickLinksRow}>
-        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("Weather")}>
+        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("My Farm", { screen: "Farm Weather" })}>
           <Text style={styles.quickLinkEmoji}>🌦️</Text>
           <Text style={styles.quickLinkLabel}>Weather</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("Mandi Prices")}>
+        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("My Farm", { screen: "Farm Mandi Prices" })}>
           <Text style={styles.quickLinkEmoji}>💰</Text>
           <Text style={styles.quickLinkLabel}>Mandi Prices</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("Voice")}>
+        <TouchableOpacity style={styles.quickLink} onPress={() => navigation.navigate("Home", { screen: "Voice" })}>
           <Text style={styles.quickLinkEmoji}>🎙️</Text>
           <Text style={styles.quickLinkLabel}>Voice Help</Text>
         </TouchableOpacity>
@@ -149,7 +149,7 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>⭐ Recommended For You</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Market")}>
+        <TouchableOpacity onPress={() => navigation.navigate("Shop")}>
           <Text style={styles.seeAll}>See all →</Text>
         </TouchableOpacity>
       </View>
@@ -161,7 +161,7 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity
               key={p.id}
               style={styles.productTile}
-              onPress={() => navigation.navigate("Market", { screen: "Product Detail", params: { product: p } })}
+              onPress={() => navigation.navigate("Shop", { screen: "Product Detail", params: { product: p } })}
             >
               <View style={styles.productImageWrap}>
                 {p.image_url ? (

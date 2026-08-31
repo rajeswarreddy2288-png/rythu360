@@ -5,8 +5,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 
+// Existing screens — all reused as-is, nothing rebuilt
 import HomeScreen from "./screens/HomeScreen";
 import VoiceAssistantScreen from "./screens/VoiceAssistantScreen";
+import NotificationsScreen from "./screens/NotificationsScreen";
 import WeatherScreen from "./screens/WeatherScreen";
 import MyFarmsScreen from "./screens/MyFarmsScreen";
 import FarmCropsScreen from "./screens/FarmCropsScreen";
@@ -25,34 +27,38 @@ import CheckoutScreen from "./screens/CheckoutScreen";
 import MyOrdersScreen from "./screens/MyOrdersScreen";
 import SellerDashboardScreen from "./screens/SellerDashboardScreen";
 import WishlistScreen from "./screens/WishlistScreen";
-import NotificationsScreen from "./screens/NotificationsScreen";
 import AdminScreen from "./screens/AdminScreen";
 import LoginScreen from "./screens/LoginScreen";
+
+// New: menu-only "hub" screens for My Farm and Profile tabs (no business logic,
+// just navigation menus pointing at the existing screens above)
+import MyFarmHubScreen from "./screens/MyFarmHubScreen";
+import ProfileHubScreen from "./screens/ProfileHubScreen";
+
 import { CartProvider } from "./CartContext";
 import { WishlistProvider } from "./WishlistContext";
 import { COLORS } from "./constants/colors";
 import { supabase } from "./supabase";
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+const ShopStack = createNativeStackNavigator();
 const FarmStack = createNativeStackNavigator();
-const MarketStack = createNativeStackNavigator();
+const OrdersStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
-  Home: "🌾",
-  Notifications: "🔔",
-  Voice: "🎙️",
-  Weather: "⛅",
-  "My Farms": "🚜",
-  Calendar: "📅",
-  "Crop Plan": "🌱",
-  "Mandi Prices": "📈",
-  Market: "🛒",
-  Schemes: "🏛️",
-  "Disease Check": "📸",
-  Profit: "💰",
-  Diary: "📔",
+  Home: "🏠",
+  Shop: "🛒",
+  "My Farm": "🌾",
+  Orders: "📦",
   Profile: "👤",
-  Admin: "🛡️",
+};
+
+const stackScreenOptions = {
+  headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
+  headerTintColor: COLORS.white,
+  headerTitleStyle: { fontWeight: "700" },
 };
 
 function LogoutButton() {
@@ -63,42 +69,70 @@ function LogoutButton() {
   );
 }
 
-// A small stack so tapping a farm can push into its crop list,
-// while still living inside the "My Farms" tab.
-function MyFarmsStack() {
+// --- Home tab: Home + Voice + Notifications (unchanged screens) ---
+function HomeTabStack() {
   return (
-    <FarmStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
-        headerTintColor: COLORS.white,
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <FarmStack.Screen name="Farms List" component={MyFarmsScreen} options={{ title: "My Farms" }} />
+    <HomeStack.Navigator screenOptions={{ ...stackScreenOptions, headerRight: () => <LogoutButton /> }}>
+      <HomeStack.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
+      <HomeStack.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
+      <HomeStack.Screen name="Notifications" component={NotificationsScreen} />
+    </HomeStack.Navigator>
+  );
+}
+
+// --- Shop tab: existing marketplace flow, unchanged ---
+function ShopTabStack() {
+  return (
+    <ShopStack.Navigator screenOptions={{ ...stackScreenOptions, headerRight: () => <LogoutButton /> }}>
+      <ShopStack.Screen name="Marketplace" component={MarketplaceScreen} />
+      <ShopStack.Screen name="Product Detail" component={ProductDetailScreen} options={{ title: "Product" }} />
+      <ShopStack.Screen name="Cart" component={CartScreen} />
+      <ShopStack.Screen name="Checkout" component={CheckoutScreen} />
+      <ShopStack.Screen name="My Orders" component={MyOrdersScreen} />
+      <ShopStack.Screen name="Wishlist" component={WishlistScreen} />
+      <ShopStack.Screen name="Seller Dashboard" component={SellerDashboardScreen} options={{ title: "Seller" }} />
+    </ShopStack.Navigator>
+  );
+}
+
+// --- My Farm tab: new hub menu + all existing farming screens (renamed routes
+// to avoid clashing with Shop's routes, components themselves are unchanged) ---
+function MyFarmTabStack() {
+  return (
+    <FarmStack.Navigator screenOptions={{ ...stackScreenOptions, headerRight: () => <LogoutButton /> }}>
+      <FarmStack.Screen name="My Farm Hub" component={MyFarmHubScreen} options={{ title: "My Farm" }} />
+      <FarmStack.Screen name="Farms List" component={MyFarmsScreen} options={{ title: "My Crops" }} />
       <FarmStack.Screen name="Farm Crops" component={FarmCropsScreen} options={{ title: "Crops" }} />
+      <FarmStack.Screen name="Farm Calendar" component={CropCalendarScreen} options={{ title: "Crop Calendar" }} />
+      <FarmStack.Screen name="Farm Crop Plan" component={CropPlanScreen} options={{ title: "Crop Plan" }} />
+      <FarmStack.Screen name="Farm Disease Check" component={DiseaseCheckScreen} options={{ title: "Crop Doctor" }} />
+      <FarmStack.Screen name="Farm Diary Entry" component={FarmDiaryScreen} options={{ title: "Farm Diary" }} />
+      <FarmStack.Screen name="Farm Profit" component={ProfitCalculatorScreen} options={{ title: "Profit Calculator" }} />
+      <FarmStack.Screen name="Farm Weather" component={WeatherScreen} options={{ title: "Weather" }} />
+      <FarmStack.Screen name="Farm Mandi Prices" component={MandiPricesScreen} options={{ title: "Mandi Prices" }} />
+      <FarmStack.Screen name="Farm Schemes" component={SchemesScreen} options={{ title: "Government Schemes" }} />
     </FarmStack.Navigator>
   );
 }
 
-// Stack for the marketplace flow: browse -> product detail -> cart -> checkout,
-// plus order history and seller dashboard, all inside the "Market" tab.
-function MarketplaceStack() {
+// --- Orders tab: existing MyOrdersScreen, unchanged ---
+function OrdersTabStack() {
   return (
-    <MarketStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
-        headerTintColor: COLORS.white,
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <MarketStack.Screen name="Marketplace" component={MarketplaceScreen} />
-      <MarketStack.Screen name="Product Detail" component={ProductDetailScreen} options={{ title: "Product" }} />
-      <MarketStack.Screen name="Cart" component={CartScreen} />
-      <MarketStack.Screen name="Checkout" component={CheckoutScreen} />
-      <MarketStack.Screen name="My Orders" component={MyOrdersScreen} />
-      <MarketStack.Screen name="Wishlist" component={WishlistScreen} />
-      <MarketStack.Screen name="Seller Dashboard" component={SellerDashboardScreen} options={{ title: "Seller" }} />
-    </MarketStack.Navigator>
+    <OrdersStack.Navigator screenOptions={{ ...stackScreenOptions, headerRight: () => <LogoutButton /> }}>
+      <OrdersStack.Screen name="My Orders Main" component={MyOrdersScreen} options={{ title: "Orders" }} />
+    </OrdersStack.Navigator>
+  );
+}
+
+// --- Profile tab: new hub menu + existing ProfileScreen + Admin (moved here
+// from its old standalone tab) ---
+function ProfileTabStack() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ ...stackScreenOptions, headerRight: () => <LogoutButton /> }}>
+      <ProfileStack.Screen name="Profile Hub" component={ProfileHubScreen} options={{ title: "Profile" }} />
+      <ProfileStack.Screen name="My Profile Details" component={ProfileScreen} options={{ title: "My Profile" }} />
+      <ProfileStack.Screen name="Profile Admin" component={AdminScreen} options={{ title: "Admin Dashboard" }} />
+    </ProfileStack.Navigator>
   );
 }
 
@@ -107,13 +141,11 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    // Check if the user is already logged in from a previous visit
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setCheckingSession(false);
     });
 
-    // Listen for login/logout events and update the app automatically
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -140,32 +172,19 @@ export default function App() {
           <StatusBar style="dark" />
           <Tab.Navigator
             screenOptions={({ route }) => ({
-              headerStyle: { backgroundColor: COLORS.primaryDeepGreen },
-              headerTintColor: COLORS.white,
-              headerTitleStyle: { fontWeight: "700" },
-              headerRight: () => <LogoutButton />,
+              headerShown: false,
               tabBarActiveTintColor: COLORS.primaryDeepGreen,
               tabBarInactiveTintColor: COLORS.gray,
-              tabBarIcon: () => <Text style={{ fontSize: 18 }}>{TAB_ICONS[route.name]}</Text>,
-              tabBarScrollEnabled: true,
-              tabBarItemStyle: { width: 80 },
+              tabBarIcon: () => <Text style={{ fontSize: 20 }}>{TAB_ICONS[route.name]}</Text>,
+              tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+              tabBarStyle: { height: 60, paddingBottom: 6, paddingTop: 6 },
             })}
           >
-            <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Rythu360" }} />
-            <Tab.Screen name="Notifications" component={NotificationsScreen} />
-            <Tab.Screen name="Voice" component={VoiceAssistantScreen} options={{ title: "Voice Assistant" }} />
-            <Tab.Screen name="Weather" component={WeatherScreen} />
-            <Tab.Screen name="My Farms" component={MyFarmsStack} options={{ headerShown: false }} />
-            <Tab.Screen name="Calendar" component={CropCalendarScreen} />
-            <Tab.Screen name="Crop Plan" component={CropPlanScreen} />
-            <Tab.Screen name="Mandi Prices" component={MandiPricesScreen} />
-            <Tab.Screen name="Market" component={MarketplaceStack} options={{ headerShown: false }} />
-            <Tab.Screen name="Schemes" component={SchemesScreen} />
-            <Tab.Screen name="Disease Check" component={DiseaseCheckScreen} />
-            <Tab.Screen name="Profit" component={ProfitCalculatorScreen} />
-            <Tab.Screen name="Diary" component={FarmDiaryScreen} />
-            <Tab.Screen name="Profile" component={ProfileScreen} />
-            <Tab.Screen name="Admin" component={AdminScreen} />
+            <Tab.Screen name="Home" component={HomeTabStack} />
+            <Tab.Screen name="Shop" component={ShopTabStack} />
+            <Tab.Screen name="My Farm" component={MyFarmTabStack} />
+            <Tab.Screen name="Orders" component={OrdersTabStack} />
+            <Tab.Screen name="Profile" component={ProfileTabStack} />
           </Tab.Navigator>
         </NavigationContainer>
       </WishlistProvider>
