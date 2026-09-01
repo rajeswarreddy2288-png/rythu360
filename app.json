@@ -4,6 +4,7 @@
     "slug": "rythu360",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "rythu360",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {

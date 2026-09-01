@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
+import * as Linking from "expo-linking";
 import { Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 
 // Existing screens — all reused as-is, nothing rebuilt
@@ -29,6 +30,8 @@ import SellerDashboardScreen from "./screens/SellerDashboardScreen";
 import WishlistScreen from "./screens/WishlistScreen";
 import AdminScreen from "./screens/AdminScreen";
 import LoginScreen from "./screens/LoginScreen";
+import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 
 // New: menu-only "hub" screens for My Farm and Profile tabs (no business logic,
 // just navigation menus pointing at the existing screens above)
@@ -139,19 +142,67 @@ function ProfileTabStack() {
 export default function App() {
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
+
+  // Parses a Supabase auth deep link (rythu360://reset-password#access_token=...
+  // &refresh_token=...&type=recovery) and, if it's a valid recovery link,
+  // establishes a temporary session so the user can set a new password
+  // without needing their old one.
+  const handleAuthDeepLink = useCallback(async (url) => {
+    if (!url) return;
+
+    let params = {};
+    try {
+      const parsed = Linking.parse(url);
+      params = { ...(parsed.queryParams || {}) };
+    } catch (e) {
+      // fall through to manual parsing below
+    }
+
+    // Supabase recovery links put the tokens after a "#", which Linking.parse
+    // does not always split into queryParams on every platform, so parse it
+    // manually as a safety net.
+    const hashIndex = url.indexOf("#");
+    if (hashIndex !== -1) {
+      const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
+      hashParams.forEach((value, key) => {
+        params[key] = value;
+      });
+    }
+
+    if (params.type === "recovery" && params.access_token && params.refresh_token) {
+      const { error } = await supabase.auth.setSession({
+        access_token: params.access_token,
+        refresh_token: params.refresh_token,
+      });
+      if (!error) {
+        setInRecoveryFlow(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
+    // Handle the case where the app was opened fresh via the recovery link
+    Linking.getInitialURL().then(handleAuthDeepLink);
+
+    // Handle the case where the app was already open in the background
+    const linkSub = Linking.addEventListener("url", (event) => handleAuthDeepLink(event.url));
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setCheckingSession(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
+    return () => {
+      linkSub.remove();
+      authListener.subscription.unsubscribe();
+    };
+  }, [handleAuthDeepLink]);
 
   if (checkingSession) {
     return (
@@ -161,8 +212,18 @@ export default function App() {
     );
   }
 
+  // A recovery deep link takes priority over everything else — even if the
+  // user happens to already be logged in as someone else, they clicked a
+  // password-reset link and that's what they need to see.
+  if (inRecoveryFlow) {
+    return <ResetPasswordScreen onDone={() => setInRecoveryFlow(false)} />;
+  }
+
   if (!session) {
-    return <LoginScreen />;
+    if (showForgotPassword) {
+      return <ForgotPasswordScreen onBack={() => setShowForgotPassword(false)} />;
+    }
+    return <LoginScreen onForgotPassword={() => setShowForgotPassword(true)} />;
   }
 
   return (
