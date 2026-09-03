@@ -9,12 +9,10 @@ export default function MarketplaceScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(route?.params?.initialSearch || "");
   const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || "All");
-  const [sortBy, setSortBy] = useState("newest"); // newest | price_low | price_high | rating
+  const [sortBy, setSortBy] = useState("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const { isWishlisted, toggleWishlist } = useWishlist();
 
-  // If Home navigates here again with new params (e.g. a different category
-  // tapped while already on this screen), pick up the fresh values.
   useEffect(() => {
     if (route?.params?.initialSearch !== undefined) setSearch(route.params.initialSearch);
     if (route?.params?.initialCategory !== undefined) setSelectedCategory(route.params.initialCategory);
@@ -28,10 +26,8 @@ export default function MarketplaceScreen({ navigation, route }) {
       .order("created_at", { ascending: false });
 
     if (!error) {
-      // Only show products from approved sellers
       const approved = (data || []).filter((p) => p.sellers?.is_approved);
 
-      // Pull all reviews once and compute each product's average rating client-side
       const { data: reviews } = await supabase.from("reviews").select("product_id, rating");
       const ratingsByProduct = {};
       (reviews || []).forEach((r) => {
@@ -56,8 +52,6 @@ export default function MarketplaceScreen({ navigation, route }) {
     return unsubscribe;
   }, [loadProducts, navigation]);
 
-  // Build the category list dynamically from whatever sellers have actually
-  // entered, so it always reflects real data rather than a fixed guess.
   const categories = [
     "All",
     ...Array.from(new Set(products.map((p) => p.category?.trim()).filter(Boolean))),
@@ -73,7 +67,7 @@ export default function MarketplaceScreen({ navigation, route }) {
       if (sortBy === "price_low") return a.price - b.price;
       if (sortBy === "price_high") return b.price - a.price;
       if (sortBy === "rating") return (b.avgRating || 0) - (a.avgRating || 0);
-      return 0; // "newest" — already sorted by created_at from the query
+      return 0;
     });
 
   const SORT_OPTIONS = [
@@ -158,8 +152,8 @@ export default function MarketplaceScreen({ navigation, route }) {
           <Text style={styles.cartButtonText}>🛍️ View Cart</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.wishlistButton} onPress={() => navigation.navigate("Wishlist")}>
-          <Text style={styles.wishlistButtonText}>❤️ View Wishlist</Text>
+        <TouchableOpacity style={styles.wishlistLink} onPress={() => navigation.navigate("Wishlist")}>
+          <Text style={styles.wishlistLinkText}>❤️ View Wishlist</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.sellerLink} onPress={() => navigation.navigate("Seller Dashboard")}>
@@ -185,18 +179,30 @@ export default function MarketplaceScreen({ navigation, route }) {
             <TouchableOpacity
               style={styles.productCard}
               onPress={() => navigation.navigate("Product Detail", { product: item })}
+              activeOpacity={0.85}
             >
-              <TouchableOpacity style={styles.heartButton} onPress={() => toggleWishlist(item)}>
-                <Text style={{ fontSize: 16 }}>{isWishlisted(item.id) ? "❤️" : "🤍"}</Text>
-              </TouchableOpacity>
-
               <View style={styles.imagePlaceholder}>
                 {item.image_url ? (
                   <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
                 ) : (
                   <Text style={{ fontSize: 32 }}>🧴</Text>
                 )}
+
+                {/* Clearly visible wishlist heart — top-right, large touch target,
+                    filled/outline states, sits on a solid circular background so
+                    it stays visible against any product photo. */}
+                <TouchableOpacity
+                  style={styles.heartButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist(item.id);
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.heartIcon}>{isWishlisted(item.id) ? "❤️" : "♡"}</Text>
+                </TouchableOpacity>
               </View>
+
               <Text style={styles.productName} numberOfLines={2}>
                 {item.name}
               </Text>
@@ -255,19 +261,6 @@ const styles = StyleSheet.create({
   sortMenuItem: { paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: COLORS.offWhite },
   sortMenuItemText: { fontSize: 13, color: COLORS.darkGreenText },
   sortMenuItemTextActive: { fontWeight: "700", color: COLORS.primaryDeepGreen },
-  categoryChip: {
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.lightGreenCard,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginRight: 8,
-  },
-  categoryChipActive: { backgroundColor: COLORS.primaryDeepGreen, borderColor: COLORS.primaryDeepGreen },
-  categoryChipText: { fontSize: 12, color: COLORS.darkGreenText, fontWeight: "600" },
-  categoryChipTextActive: { color: COLORS.white },
-  noticeText: { fontSize: 11, color: "#8A5B00", lineHeight: 15 },
   cartButton: {
     backgroundColor: COLORS.primaryDeepGreen,
     borderRadius: 10,
@@ -276,6 +269,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cartButtonText: { color: COLORS.white, fontWeight: "700", fontSize: FONT_SIZES.small },
+  wishlistLink: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGreenCard,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  wishlistLinkText: { color: "#D6336C", fontWeight: "700", fontSize: FONT_SIZES.small },
   sellerLink: { alignItems: "center", paddingVertical: 6 },
   sellerLinkText: { color: COLORS.harvestGold, fontSize: 12, fontWeight: "600" },
   empty: { color: COLORS.gray, textAlign: "center", marginTop: 20, width: "100%" },
@@ -289,18 +292,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   imagePlaceholder: {
-    height: 70,
+    height: 90,
     backgroundColor: COLORS.lightGreenCard,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
+    position: "relative",
     overflow: "hidden",
   },
   productImage: { width: "100%", height: "100%" },
+  heartButton: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  heartIcon: { fontSize: 18, color: "#D6336C" },
   productName: { fontWeight: "700", color: COLORS.darkGreenText, fontSize: 13, minHeight: 32 },
   productPrice: { fontWeight: "700", color: COLORS.primaryDeepGreen, fontSize: FONT_SIZES.body, marginTop: 4 },
+  ratingText: { color: "#B8860B", fontSize: 11, marginTop: 2, fontWeight: "600" },
   productSeller: { color: COLORS.gray, fontSize: 10, marginTop: 4 },
   productStock: { color: COLORS.gray, fontSize: 10, marginTop: 2 },
-  ratingText: { color: "#B8860B", fontSize: 11, marginTop: 2, fontWeight: "600" },
 });

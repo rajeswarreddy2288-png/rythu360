@@ -13,6 +13,8 @@ export default function WishlistScreen({ navigation }) {
     setLoading(true);
     const ids = Array.from(productIds);
 
+    console.log("[WISHLIST DEBUG] WishlistScreen — saved product ids:", ids);
+
     if (ids.length === 0) {
       setProducts([]);
       setLoading(false);
@@ -23,6 +25,21 @@ export default function WishlistScreen({ navigation }) {
       .from("products")
       .select("*, sellers(shop_name, village, is_approved)")
       .in("id", ids);
+
+    console.log(
+      "[WISHLIST DEBUG] WishlistScreen — products query returned:",
+      data?.length,
+      "of",
+      ids.length,
+      "requested. error:",
+      error
+    );
+    if (data) {
+      console.log(
+        "[WISHLIST DEBUG] WishlistScreen — returned product ids:",
+        data.map((p) => p.id)
+      );
+    }
 
     if (!error) setProducts(data || []);
     setLoading(false);

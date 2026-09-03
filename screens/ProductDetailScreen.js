@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { COLORS, FONT_SIZES } from "../constants/colors";
 import { useCart } from "../CartContext";
+import { useWishlist } from "../WishlistContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -19,6 +20,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(1);
   const [activeIndex, setActiveIndex] = useState(0);
   const { addToCart } = useCart();
+  const { isWishlisted, toggleWishlist } = useWishlist();
 
   const gallery =
     product.images && product.images.length > 0
@@ -61,6 +63,17 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Clearly visible wishlist heart — top-right of the gallery, large
+            touch target, sits on a solid circular background so it's visible
+            against any product photo. Reuses the existing WishlistContext. */}
+        <TouchableOpacity
+          style={styles.heartButton}
+          onPress={() => toggleWishlist(product.id)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.heartIcon}>{isWishlisted(product.id) ? "❤️" : "♡"}</Text>
+        </TouchableOpacity>
+
         {gallery.length > 1 && (
           <View style={styles.dotsRow}>
             {gallery.map((_, index) => (
@@ -84,7 +97,18 @@ export default function ProductDetailScreen({ route, navigation }) {
       )}
 
       <View style={styles.content}>
-        <Text style={styles.name}>{product.name}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.name}>{product.name}</Text>
+          <TouchableOpacity
+            onPress={() => toggleWishlist(product.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.heartIconSmall}>
+              {isWishlisted(product.id) ? "❤️ Wishlisted" : "♡ Add to Wishlist"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.price}>₹{product.price}</Text>
         {product.avgRating != null && (
           <Text style={styles.rating}>
@@ -127,9 +151,27 @@ export default function ProductDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.offWhite },
-  galleryWrapper: { width: SCREEN_WIDTH, height: 280, backgroundColor: COLORS.lightGreenCard },
+  galleryWrapper: { width: SCREEN_WIDTH, height: 280, backgroundColor: COLORS.lightGreenCard, position: "relative" },
   mainImage: { width: SCREEN_WIDTH, height: 280 },
   mainImagePlaceholder: { width: SCREEN_WIDTH, height: 280, justifyContent: "center", alignItems: "center" },
+  heartButton: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  heartIcon: { fontSize: 22, color: "#D6336C" },
+  heartIconSmall: { fontSize: 13, color: "#D6336C", fontWeight: "700" },
   dotsRow: {
     position: "absolute",
     bottom: 10,
@@ -151,7 +193,8 @@ const styles = StyleSheet.create({
   },
   thumbActive: { borderColor: COLORS.primaryDeepGreen },
   content: { padding: 20 },
-  name: { fontSize: FONT_SIZES.h2, fontWeight: "700", color: COLORS.primaryDeepGreen },
+  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  name: { flex: 1, fontSize: FONT_SIZES.h2, fontWeight: "700", color: COLORS.primaryDeepGreen, marginRight: 10 },
   price: { fontSize: FONT_SIZES.h1, fontWeight: "700", color: COLORS.darkGreenText, marginTop: 6 },
   rating: { color: "#B8860B", fontSize: FONT_SIZES.small, marginTop: 4, fontWeight: "600" },
   seller: { color: COLORS.gray, fontSize: FONT_SIZES.small, marginTop: 6 },
